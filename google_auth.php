@@ -377,10 +377,20 @@ $_SESSION['application_status'] = $applicationStatus;
     }
     exit;
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    $message = (string)$e->getMessage();
+    $isDatabaseFailure =
+        stripos($message, 'Database connection failed') !== false
+        || stripos($message, 'SQLSTATE') !== false
+        || stripos($message, 'mysqli') !== false;
+
+    if ($isDatabaseFailure) {
+        respondAuthError(503, 'Database connection failed. Please check deployment database settings and try again.');
+    }
+
     respondAuthError(500, 'Authentication failed.', [
         'exception' => get_class($e),
-        'message' => $e->getMessage(),
+        'message' => $message,
         'file' => $e->getFile(),
         'line' => $e->getLine()
     ]);

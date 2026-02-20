@@ -17,6 +17,8 @@ define('DB_USERNAME', env('DB_USERNAME', 'root'));
 define('DB_PASSWORD', env('DB_PASSWORD', ''));
 define('DB_NAME', env('DB_NAME', 'vehicleregistrationsystem'));
 define('DB_CHARSET', env('DB_CHARSET', 'utf8mb4'));
+define('DB_CONNECT_MAX_ATTEMPTS', max(1, env_int('DB_CONNECT_MAX_ATTEMPTS', 3)));
+define('DB_CONNECT_RETRY_MS', max(0, env_int('DB_CONNECT_RETRY_MS', 250)));
 
 // Database connection options
 define('DB_OPTIONS', [
@@ -39,12 +41,24 @@ function getDatabaseConnection() {
     static $connection = null;
     
     if ($connection === null) {
-        try {
-            $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-            $connection = new PDO($dsn, DB_USERNAME, DB_PASSWORD, DB_OPTIONS);
-        } catch (PDOException $e) {
-            // Log error and throw user-friendly exception
-            error_log("Database connection failed: " . $e->getMessage());
+        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= DB_CONNECT_MAX_ATTEMPTS; $attempt++) {
+            try {
+                $connection = new PDO($dsn, DB_USERNAME, DB_PASSWORD, DB_OPTIONS);
+                break;
+            } catch (PDOException $e) {
+                $lastException = $e;
+                if ($attempt < DB_CONNECT_MAX_ATTEMPTS && DB_CONNECT_RETRY_MS > 0) {
+                    usleep(DB_CONNECT_RETRY_MS * 1000);
+                }
+            }
+        }
+
+        if ($connection === null) {
+            $errorMessage = $lastException ? $lastException->getMessage() : 'Unknown database error';
+            error_log("Database connection failed to " . DB_HOST . ":" . DB_PORT . " after " . DB_CONNECT_MAX_ATTEMPTS . " attempt(s): " . $errorMessage);
             throw new Exception("Database connection failed. Please try again later.");
         }
     }
@@ -62,15 +76,29 @@ function getDatabaseConnection() {
  * @throws Exception If connection fails
  */
 function getLegacyDatabaseConnection() {
-    $connection = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME, DB_PORT);
-    
-    if ($connection->connect_error) {
-        error_log("Legacy database connection failed: " . $connection->connect_error);
-        throw new Exception("Database connection failed. Please try again later.");
+    $lastError = null;
+
+    for ($attempt = 1; $attempt <= DB_CONNECT_MAX_ATTEMPTS; $attempt++) {
+        mysqli_report(MYSQLI_REPORT_OFF);
+        $connection = @new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME, DB_PORT);
+
+        if ($connection && !$connection->connect_error) {
+            $connection->set_charset(DB_CHARSET);
+            return $connection;
+        }
+
+        $lastError = $connection && $connection->connect_error ? $connection->connect_error : 'Unknown connection error';
+        if ($connection instanceof mysqli) {
+            $connection->close();
+        }
+
+        if ($attempt < DB_CONNECT_MAX_ATTEMPTS && DB_CONNECT_RETRY_MS > 0) {
+            usleep(DB_CONNECT_RETRY_MS * 1000);
+        }
     }
-    
-    $connection->set_charset(DB_CHARSET);
-    return $connection;
+
+    error_log("Legacy database connection failed to " . DB_HOST . ":" . DB_PORT . " after " . DB_CONNECT_MAX_ATTEMPTS . " attempt(s): " . $lastError);
+    throw new Exception("Database connection failed. Please verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, and DB_NAME.");
 }
 
 /**
