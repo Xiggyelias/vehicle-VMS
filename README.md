@@ -13,6 +13,8 @@ Production-focused PHP/MySQL system for vehicle registration, driver authorizati
    - `.env.dokploy.example` -> `.env`
 2. Set required values:
    - `BASE_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `MYSQL_ROOT_PASSWORD`
+   - SMTP values (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`)
+   - Use real values (example placeholders are rejected in production startup checks)
 3. Start stack:
    - `docker compose up -d --build`
 4. Run migrations:

@@ -24,6 +24,10 @@ This checklist is aligned with the Docker + Dokploy setup in this repository.
   - `tests/` and `database/` blocked from web access
 - Startup checks run in `docker/entrypoint.sh`:
   - required env validation in production
+  - rejects placeholder/example values
+  - requires HTTPS `BASE_URL` (unless `ALLOW_INSECURE_BASE_URL=true`)
+  - requires non-root DB app user
+  - waits for DB readiness before auto-migrations
   - optional migration execution with `RUN_MIGRATIONS_ON_START=true`
 
 ## 3) Health and readiness

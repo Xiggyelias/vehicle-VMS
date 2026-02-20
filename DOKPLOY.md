@@ -14,10 +14,15 @@
   - `DB_NAME`
   - `MYSQL_ROOT_PASSWORD`
   - SMTP credentials (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, etc.)
+- Production validation enforced at container startup:
+  - `DB_USERNAME` must not be `root`
+  - `BASE_URL` must be HTTPS (`https://...`)
+  - Example placeholders like `change_me` / `your-email@example.com` are rejected
 - Optional:
   - `RUN_MIGRATIONS_ON_START=true` (runs `php migrate.php` at container boot)
   - `OCR_SPACE_API_KEY`
   - Google OAuth values
+  - `ALLOW_INSECURE_BASE_URL=true` (temporary non-HTTPS testing only)
 
 ## 3) Domain and port
 - Attach your domain to the `app` service.
@@ -46,4 +51,5 @@
 
 ## Notes
 - Container startup now enforces required production env vars.
+- Container startup waits for DB readiness before running auto-migrations.
 - Apache is hardened to block direct access to sensitive files (`.env`, `.sql`, `.log`, `tests/`, `database/`).
