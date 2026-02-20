@@ -3,7 +3,36 @@ require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/middleware/security.php';
 SecurityMiddleware::initialize();
 
-header('Content-Type: application/json');
+$currentRoute = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+$isRedirectCallbackRoute = (bool)preg_match('#/(auth/google/callback|google-callback\.php)/?$#', $currentRoute);
+$wantsJsonResponse = !$isRedirectCallbackRoute && (
+    (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+    || (isset($_SERVER['HTTP_ACCEPT']) && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+    || (isset($_SERVER['CONTENT_TYPE']) && stripos((string)$_SERVER['CONTENT_TYPE'], 'application/json') !== false)
+);
+
+if (isset($_GET['response']) && $_GET['response'] === 'json') {
+    $wantsJsonResponse = true;
+}
+
+$GLOBALS['GOOGLE_AUTH_WANTS_JSON'] = $wantsJsonResponse;
+
+if ($wantsJsonResponse) {
+    header('Content-Type: application/json');
+}
+
+function googleAuthWantsJsonResponse() {
+    return !empty($GLOBALS['GOOGLE_AUTH_WANTS_JSON']);
+}
+
+function buildAbsoluteAppUrl($path, $params = []) {
+    $base = rtrim((string)BASE_URL, '/');
+    $url = $base . '/' . ltrim((string)$path, '/');
+    if (!empty($params)) {
+        $url .= '?' . http_build_query($params);
+    }
+    return $url;
+}
 
 /**
  * Send a sanitized auth error response.
@@ -11,6 +40,11 @@ header('Content-Type: application/json');
  * Debug details are only included in development mode.
  */
 function respondAuthError($httpCode, $message, $debug = []) {
+    if (!googleAuthWantsJsonResponse()) {
+        header('Location: ' . buildAbsoluteAppUrl('/login.php', ['error' => 'google_auth_failed']));
+        exit;
+    }
+
     http_response_code((int)$httpCode);
     $response = [
         'success' => false,
@@ -31,9 +65,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $rawBody = file_get_contents('php://input');
 $payload = json_decode($rawBody, true);
+if (!is_array($payload)) {
+    $payload = [];
+}
+if (!isset($payload['credential']) && isset($_POST['credential'])) {
+    $payload['credential'] = (string)$_POST['credential'];
+}
 
 // Handle test requests only in development.
 if (isset($payload['test']) && $payload['test'] === 'direct_connection' && isDevelopment()) {
+    header('Content-Type: application/json');
     echo json_encode([
         'success' => true, 
         'message' => 'Backend is accessible',
@@ -192,7 +233,7 @@ if (!$user) {
                 'name'  => $fullName
             ];
 
-            echo json_encode([
+            $typeSelectionResponse = [
                 'success' => true,
                 'requires_type_selection' => true,
                 'temp_user_id' => $userId,
@@ -203,7 +244,16 @@ if (!$user) {
                     'dob' => $dateOfBirth,
                 'application_status' => $applicationStatus
                 ]
-            ]);
+            ];
+            if (googleAuthWantsJsonResponse()) {
+                echo json_encode($typeSelectionResponse);
+            } else {
+                header('Location: ' . buildAbsoluteAppUrl('/login.php', [
+                    'requires_type_selection' => '1',
+                    'temp_user_id' => (string)$userId,
+                    'suggested' => 'student'
+                ]));
+            }
             exit;
 } else {
     $userId = (int)$user['applicant_id'];
@@ -264,7 +314,7 @@ if ($needsSetup) {
         'name'  => $fullName
     ];
 
-    echo json_encode([
+    $typeSelectionResponse = [
         'success' => true,
         'requires_type_selection' => true,
         'temp_user_id' => $userId,
@@ -274,7 +324,17 @@ if ($needsSetup) {
             'email' => $email,
             'application_status' => $applicationStatus
         ]
-    ]);
+    ];
+    if (googleAuthWantsJsonResponse()) {
+        echo json_encode($typeSelectionResponse);
+    } else {
+        $suggestedRole = in_array($currentType, ['student', 'staff'], true) ? $currentType : 'student';
+        header('Location: ' . buildAbsoluteAppUrl('/login.php', [
+            'requires_type_selection' => '1',
+            'temp_user_id' => (string)$userId,
+            'suggested' => $suggestedRole
+        ]));
+    }
     exit;
 }
 
@@ -297,7 +357,7 @@ $_SESSION['application_status'] = $applicationStatus;
     // Always redirect to the user dashboard after successful login
     $redirect = 'user-dashboard.php';
 
-    echo json_encode([
+    $successResponse = [
         'success' => true, 
         'redirect' => $redirect,
         'user_info' => [
@@ -309,7 +369,13 @@ $_SESSION['application_status'] = $applicationStatus;
             'dob' => $dateOfBirth,
             'application_status' => $applicationStatus
         ]
-    ]);
+    ];
+    if (googleAuthWantsJsonResponse()) {
+        echo json_encode($successResponse);
+    } else {
+        header('Location: ' . buildAbsoluteAppUrl('/' . ltrim((string)$redirect, '/')));
+    }
+    exit;
     
 } catch (Exception $e) {
     respondAuthError(500, 'Authentication failed.', [
@@ -324,4 +390,3 @@ $_SESSION['application_status'] = $applicationStatus;
     }
 }
 ?>
-

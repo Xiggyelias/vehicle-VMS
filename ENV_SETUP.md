@@ -64,8 +64,10 @@ SMTP_FROM_EMAIL=noreply@au.ac.zw
 If you need to update Google OAuth credentials:
 ```env
 GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CALLBACK_URL=https://vehicle.africau.co.zw/auth/google/callback
 ALLOWED_GOOGLE_DOMAIN=africau.edu
 ```
+Legacy callback alias is also supported: `https://vehicle.africau.co.zw/google-callback.php`.
 
 #### **Application Configuration**
 ```env
@@ -145,6 +147,7 @@ chmod -R 755 backups/
 
 ### Google OAuth Settings
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
+- `GOOGLE_CALLBACK_URL` - Google callback URL
 - `ALLOWED_GOOGLE_DOMAIN` - Allowed email domain
 
 ### Vehicle Registration Settings

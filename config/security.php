@@ -56,6 +56,8 @@ define('CSRF_SECURITY', [
     'expire_time' => 3600, // 1 hour
     'regenerate_on_login' => true,
     'exempt_routes' => [
+        '/auth/google/callback*',
+        '/google-callback.php*',
         '*/logout.php',
         '/api/webhook/*'
     ]

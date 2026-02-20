@@ -139,6 +139,14 @@ function isProduction() {
 if (!defined('GOOGLE_CLIENT_ID')) {
     define('GOOGLE_CLIENT_ID', env('GOOGLE_CLIENT_ID', '561037470081-3fs3roso7v8gnq9idijoap15tn7sqr3l.apps.googleusercontent.com'));
 }
+if (!defined('GOOGLE_CALLBACK_URL')) {
+    $defaultGoogleCallbackUrl = BASE_URL . '/auth/google/callback';
+    $configuredGoogleCallbackUrl = rtrim((string) env('GOOGLE_CALLBACK_URL', $defaultGoogleCallbackUrl), '/');
+    if ($configuredGoogleCallbackUrl === '') {
+        $configuredGoogleCallbackUrl = $defaultGoogleCallbackUrl;
+    }
+    define('GOOGLE_CALLBACK_URL', $configuredGoogleCallbackUrl);
+}
 if (!defined('ALLOWED_GOOGLE_DOMAIN')) {
     define('ALLOWED_GOOGLE_DOMAIN', env('ALLOWED_GOOGLE_DOMAIN', 'africau.edu'));
 }

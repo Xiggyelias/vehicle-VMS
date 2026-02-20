@@ -68,13 +68,17 @@ class SecurityMiddleware {
         $clientIP = self::getClientIP();
         $currentTime = time();
         $currentRoute = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $normalizedRoute = rtrim($currentRoute, '/');
+        if ($normalizedRoute === '') {
+            $normalizedRoute = '/';
+        }
         $maxLoginAttempts = (int)($config['max_login_attempts'] ?? 5);
         $lockoutTime = (int)($config['lockout_duration'] ?? 900);
         $maxRequestsPerMinute = (int)($config['max_requests_per_minute'] ?? 60);
 
         $isLoginRoute = false;
-        foreach (['/login.php', '/admin-login.php', '/google_auth.php'] as $loginRoute) {
-            if (str_ends_with($currentRoute, $loginRoute)) {
+        foreach (['/login.php', '/admin-login.php', '/google_auth.php', '/auth/google/callback', '/google-callback.php'] as $loginRoute) {
+            if (str_ends_with($normalizedRoute, $loginRoute)) {
                 $isLoginRoute = true;
                 break;
             }

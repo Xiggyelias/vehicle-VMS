@@ -26,6 +26,9 @@ if (isset($_GET['error'])) {
         $retryMinutes = (int)ceil($retryAfter / 60);
         $alert_type = 'danger';
         $alert_message = 'Too many login attempts. Please try again in about ' . $retryMinutes . ' minute(s).';
+    } elseif ($error === 'google_auth_failed') {
+        $alert_type = 'danger';
+        $alert_message = 'Google sign-in failed. Please try again.';
     }
 }
 
@@ -327,8 +330,8 @@ if (isset($login_successful) && $login_successful) {
                         <div id="g_id_onload"
                              data-client_id="<?= htmlspecialchars(GOOGLE_CLIENT_ID) ?>"
                              data-context="signin"
-                             data-ux_mode="popup"
-                             data-callback="handleGoogleCredential"
+                             data-ux_mode="redirect"
+                             data-login_uri="<?= htmlspecialchars(GOOGLE_CALLBACK_URL) ?>"
                              data-auto_select="false"
                              data-itp_support="true"
                              data-use_fedcm_for_prompt="false">
@@ -450,10 +453,17 @@ if (isset($login_successful) && $login_successful) {
                         showRoleSelection(obj.tempUserId, obj.suggested);
                     }
                 } else if (q.get('requires_type_selection') === '1') {
-                    // Only open if we have a pending tempUserId cached; otherwise, wait for next auth
-                    const obj = stored ? JSON.parse(stored) : null;
-                    if (obj && obj.tempUserId) {
-                        showRoleSelection(obj.tempUserId, obj.suggested);
+                    const queryTempUserId = parseInt(q.get('temp_user_id') || '', 10);
+                    const querySuggested = q.get('suggested') || 'student';
+                    if (Number.isInteger(queryTempUserId) && queryTempUserId > 0) {
+                        try {
+                            sessionStorage.setItem('pending_role_selection', JSON.stringify({
+                                tempUserId: queryTempUserId,
+                                suggested: querySuggested,
+                                ts: Date.now()
+                            }));
+                        } catch (_) {}
+                        showRoleSelection(queryTempUserId, querySuggested);
                     }
                 }
             } catch (_) {}

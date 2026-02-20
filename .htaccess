@@ -1,5 +1,10 @@
 Options -Indexes
 
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^auth/google/callback/?$ google_auth.php [L,QSA]
+</IfModule>
+
 <FilesMatch "^\.env">
     Require all denied
 </FilesMatch>
