@@ -10,7 +10,7 @@
 - Required in production:
   - `BASE_URL`
   - `APP_PORT` (keep `80` unless you intentionally change container listen port)
-  - `DB_HOST`
+  - `DB_HOST` (if using internal compose DB, keep `db`; if using external/managed DB, set the actual host)
   - `DB_PORT`
   - `DB_USERNAME`
   - `DB_PASSWORD`
@@ -23,6 +23,8 @@
   - Example placeholders like `change_me` / `your-email@example.com` are rejected
 - Optional:
   - `RUN_MIGRATIONS_ON_START=true` (runs `php migrate.php` at container boot)
+  - `WAIT_FOR_DB_ON_START=true` (recommended; blocks app start until DB is reachable)
+  - `DB_HOST_FALLBACKS=mysql,database` (optional host fallback list, comma-separated)
   - `OCR_SPACE_API_KEY`
   - Google OAuth values:
     - `GOOGLE_UX_MODE=popup` (recommended; avoids redirect URI mismatch)

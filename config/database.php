@@ -19,6 +19,7 @@ define('DB_NAME', env('DB_NAME', 'vehicleregistrationsystem'));
 define('DB_CHARSET', env('DB_CHARSET', 'utf8mb4'));
 define('DB_CONNECT_MAX_ATTEMPTS', max(1, env_int('DB_CONNECT_MAX_ATTEMPTS', 3)));
 define('DB_CONNECT_RETRY_MS', max(0, env_int('DB_CONNECT_RETRY_MS', 250)));
+define('DB_HOST_FALLBACKS', env_array('DB_HOST_FALLBACKS', []));
 
 // Database connection options
 define('DB_OPTIONS', [
@@ -27,6 +28,125 @@ define('DB_OPTIONS', [
     PDO::ATTR_EMULATE_PREPARES => false,
     PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET
 ]);
+
+/**
+ * Parses a mysql-style connection URL into connection parts.
+ *
+ * @param string $url
+ * @return array|null
+ */
+function parseDatabaseUrl($url) {
+    $url = trim((string)$url);
+    if ($url === '') {
+        return null;
+    }
+
+    $parts = @parse_url($url);
+    if (!is_array($parts) || empty($parts['host'])) {
+        return null;
+    }
+
+    $scheme = strtolower((string)($parts['scheme'] ?? ''));
+    if ($scheme !== '' && !in_array($scheme, ['mysql', 'mariadb'], true)) {
+        return null;
+    }
+
+    $database = ltrim((string)($parts['path'] ?? ''), '/');
+
+    return [
+        'host' => (string)$parts['host'],
+        'port' => isset($parts['port']) ? (int)$parts['port'] : 3306,
+        'username' => isset($parts['user']) ? (string)urldecode($parts['user']) : '',
+        'password' => isset($parts['pass']) ? (string)urldecode($parts['pass']) : '',
+        'database' => $database
+    ];
+}
+
+/**
+ * Returns candidate DB connection configs to try in order.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function getDatabaseConnectionCandidates() {
+    static $candidates = null;
+    if ($candidates !== null) {
+        return $candidates;
+    }
+
+    $candidates = [];
+    $seen = [];
+    $addCandidate = function($host, $port, $username, $password, $database, $source) use (&$candidates, &$seen) {
+        $host = trim((string)$host);
+        $username = (string)$username;
+        $password = (string)$password;
+        $database = trim((string)$database);
+        $port = (int)$port;
+
+        if ($host === '' || $database === '' || $username === '') {
+            return;
+        }
+
+        $key = hash('sha256', json_encode([$host, $port, $username, $password, $database]));
+        if (isset($seen[$key])) {
+            return;
+        }
+        $seen[$key] = true;
+
+        $candidates[] = [
+            'host' => $host,
+            'port' => $port > 0 ? $port : 3306,
+            'username' => $username,
+            'password' => $password,
+            'database' => $database,
+            'source' => (string)$source
+        ];
+    };
+
+    // Primary explicit DB_* config.
+    $addCandidate(DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME, 'DB_*');
+
+    // Optional fallback hosts with same credentials/database.
+    foreach (DB_HOST_FALLBACKS as $fallbackHost) {
+        $addCandidate($fallbackHost, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME, 'DB_HOST_FALLBACKS');
+    }
+
+    // Common managed DB aliases injected by platforms.
+    $addCandidate(
+        env('MYSQLHOST', env('MYSQL_HOST', '')),
+        env_int('MYSQLPORT', env_int('MYSQL_PORT', DB_PORT)),
+        env('MYSQLUSER', env('MYSQL_USER', '')),
+        env('MYSQLPASSWORD', env('MYSQL_PASSWORD', '')),
+        env('MYSQLDATABASE', env('MYSQL_DATABASE', DB_NAME)),
+        'MYSQL*'
+    );
+
+    // URL-based managed DB configs.
+    $urlCandidate = parseDatabaseUrl(env('DATABASE_URL', env('MYSQL_URL', '')));
+    if (is_array($urlCandidate)) {
+        $addCandidate(
+            $urlCandidate['host'],
+            $urlCandidate['port'],
+            $urlCandidate['username'],
+            $urlCandidate['password'],
+            $urlCandidate['database'] !== '' ? $urlCandidate['database'] : DB_NAME,
+            'DATABASE_URL'
+        );
+    }
+
+    // Ensure at least one candidate exists for error reporting.
+    if (empty($candidates)) {
+        $candidates[] = [
+            'host' => DB_HOST,
+            'port' => DB_PORT,
+            'username' => DB_USERNAME,
+            'password' => DB_PASSWORD,
+            'database' => DB_NAME,
+            'source' => 'DB_*'
+        ];
+    }
+
+    return $candidates;
+}
 
 /**
  * Get Database Connection
@@ -41,25 +161,36 @@ function getDatabaseConnection() {
     static $connection = null;
     
     if ($connection === null) {
-        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+        $candidates = getDatabaseConnectionCandidates();
         $lastException = null;
+        $attemptedTargets = [];
 
-        for ($attempt = 1; $attempt <= DB_CONNECT_MAX_ATTEMPTS; $attempt++) {
-            try {
-                $connection = new PDO($dsn, DB_USERNAME, DB_PASSWORD, DB_OPTIONS);
-                break;
-            } catch (PDOException $e) {
-                $lastException = $e;
-                if ($attempt < DB_CONNECT_MAX_ATTEMPTS && DB_CONNECT_RETRY_MS > 0) {
-                    usleep(DB_CONNECT_RETRY_MS * 1000);
+        foreach ($candidates as $candidate) {
+            $target = $candidate['source'] . ':' . $candidate['host'] . ':' . $candidate['port'] . '/' . $candidate['database'];
+            $attemptedTargets[] = $target;
+            $dsn = "mysql:host=" . $candidate['host'] . ";port=" . $candidate['port'] . ";dbname=" . $candidate['database'] . ";charset=" . DB_CHARSET;
+
+            for ($attempt = 1; $attempt <= DB_CONNECT_MAX_ATTEMPTS; $attempt++) {
+                try {
+                    $connection = new PDO($dsn, $candidate['username'], $candidate['password'], DB_OPTIONS);
+                    break 2;
+                } catch (PDOException $e) {
+                    $lastException = $e;
+                    if ($attempt < DB_CONNECT_MAX_ATTEMPTS && DB_CONNECT_RETRY_MS > 0) {
+                        usleep(DB_CONNECT_RETRY_MS * 1000);
+                    }
                 }
             }
         }
 
         if ($connection === null) {
             $errorMessage = $lastException ? $lastException->getMessage() : 'Unknown database error';
-            error_log("Database connection failed to " . DB_HOST . ":" . DB_PORT . " after " . DB_CONNECT_MAX_ATTEMPTS . " attempt(s): " . $errorMessage);
-            throw new Exception("Database connection failed. Please try again later.");
+            error_log(
+                "Database connection failed after " . DB_CONNECT_MAX_ATTEMPTS . " attempt(s) per target. Tried: "
+                . implode(', ', $attemptedTargets)
+                . ". Last error: " . $errorMessage
+            );
+            throw new Exception("Database connection failed. Please verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, and DB_NAME.");
         }
     }
     
@@ -76,28 +207,44 @@ function getDatabaseConnection() {
  * @throws Exception If connection fails
  */
 function getLegacyDatabaseConnection() {
+    $candidates = getDatabaseConnectionCandidates();
     $lastError = null;
+    $attemptedTargets = [];
 
-    for ($attempt = 1; $attempt <= DB_CONNECT_MAX_ATTEMPTS; $attempt++) {
-        mysqli_report(MYSQLI_REPORT_OFF);
-        $connection = @new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME, DB_PORT);
+    foreach ($candidates as $candidate) {
+        $attemptedTargets[] = $candidate['source'] . ':' . $candidate['host'] . ':' . $candidate['port'] . '/' . $candidate['database'];
 
-        if ($connection && !$connection->connect_error) {
-            $connection->set_charset(DB_CHARSET);
-            return $connection;
-        }
+        for ($attempt = 1; $attempt <= DB_CONNECT_MAX_ATTEMPTS; $attempt++) {
+            mysqli_report(MYSQLI_REPORT_OFF);
+            $connection = @new mysqli(
+                $candidate['host'],
+                $candidate['username'],
+                $candidate['password'],
+                $candidate['database'],
+                $candidate['port']
+            );
 
-        $lastError = $connection && $connection->connect_error ? $connection->connect_error : 'Unknown connection error';
-        if ($connection instanceof mysqli) {
-            $connection->close();
-        }
+            if ($connection && !$connection->connect_error) {
+                $connection->set_charset(DB_CHARSET);
+                return $connection;
+            }
 
-        if ($attempt < DB_CONNECT_MAX_ATTEMPTS && DB_CONNECT_RETRY_MS > 0) {
-            usleep(DB_CONNECT_RETRY_MS * 1000);
+            $lastError = $connection && $connection->connect_error ? $connection->connect_error : 'Unknown connection error';
+            if ($connection instanceof mysqli) {
+                $connection->close();
+            }
+
+            if ($attempt < DB_CONNECT_MAX_ATTEMPTS && DB_CONNECT_RETRY_MS > 0) {
+                usleep(DB_CONNECT_RETRY_MS * 1000);
+            }
         }
     }
 
-    error_log("Legacy database connection failed to " . DB_HOST . ":" . DB_PORT . " after " . DB_CONNECT_MAX_ATTEMPTS . " attempt(s): " . $lastError);
+    error_log(
+        "Legacy database connection failed after " . DB_CONNECT_MAX_ATTEMPTS . " attempt(s) per target. Tried: "
+        . implode(', ', $attemptedTargets)
+        . ". Last error: " . $lastError
+    );
     throw new Exception("Database connection failed. Please verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, and DB_NAME.");
 }
 

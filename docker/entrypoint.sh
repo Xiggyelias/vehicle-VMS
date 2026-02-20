@@ -85,12 +85,15 @@ if [[ "${APP_ENV:-production}" == "production" ]]; then
   fi
 fi
 
-if [[ "${RUN_MIGRATIONS_ON_START:-false}" == "true" ]]; then
+# Wait for DB readiness by default so first requests do not fail on cold start.
+if [[ "${WAIT_FOR_DB_ON_START:-true}" == "true" ]]; then
   if ! wait_for_database; then
-    echo "[entrypoint] Database did not become ready in time. Aborting startup." >&2
+    echo "[entrypoint] Database did not become ready in time at ${DB_HOST:-db}:${DB_PORT:-3306}. Aborting startup." >&2
     exit 1
   fi
+fi
 
+if [[ "${RUN_MIGRATIONS_ON_START:-false}" == "true" ]]; then
   echo "[entrypoint] Running database migrations..."
   php migrate.php
 fi
