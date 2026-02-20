@@ -139,6 +139,13 @@ function isProduction() {
 if (!defined('GOOGLE_CLIENT_ID')) {
     define('GOOGLE_CLIENT_ID', env('GOOGLE_CLIENT_ID', '561037470081-3fs3roso7v8gnq9idijoap15tn7sqr3l.apps.googleusercontent.com'));
 }
+if (!defined('GOOGLE_UX_MODE')) {
+    $configuredGoogleUxMode = strtolower(trim((string) env('GOOGLE_UX_MODE', 'popup')));
+    if (!in_array($configuredGoogleUxMode, ['popup', 'redirect'], true)) {
+        $configuredGoogleUxMode = 'popup';
+    }
+    define('GOOGLE_UX_MODE', $configuredGoogleUxMode);
+}
 if (!defined('GOOGLE_CALLBACK_URL')) {
     $defaultGoogleCallbackUrl = BASE_URL . '/auth/google/callback';
     $configuredGoogleCallbackUrl = rtrim((string) env('GOOGLE_CALLBACK_URL', $defaultGoogleCallbackUrl), '/');

@@ -24,7 +24,9 @@
 - Optional:
   - `RUN_MIGRATIONS_ON_START=true` (runs `php migrate.php` at container boot)
   - `OCR_SPACE_API_KEY`
-  - Google OAuth values (set `GOOGLE_CALLBACK_URL=https://vehicle.africau.co.zw/auth/google/callback`)
+  - Google OAuth values:
+    - `GOOGLE_UX_MODE=popup` (recommended; avoids redirect URI mismatch)
+    - `GOOGLE_CALLBACK_URL=https://vehicle.africau.co.zw/auth/google/callback` (used when `GOOGLE_UX_MODE=redirect`)
   - Legacy callback alias is also supported: `https://vehicle.africau.co.zw/google-callback.php`
   - `ALLOW_INSECURE_BASE_URL=true` (temporary non-HTTPS testing only)
 

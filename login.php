@@ -330,8 +330,12 @@ if (isset($login_successful) && $login_successful) {
                         <div id="g_id_onload"
                              data-client_id="<?= htmlspecialchars(GOOGLE_CLIENT_ID) ?>"
                              data-context="signin"
-                             data-ux_mode="redirect"
+                             data-ux_mode="<?= htmlspecialchars(GOOGLE_UX_MODE) ?>"
+                             <?php if (GOOGLE_UX_MODE === 'redirect'): ?>
                              data-login_uri="<?= htmlspecialchars(GOOGLE_CALLBACK_URL) ?>"
+                             <?php else: ?>
+                             data-callback="handleGoogleCredential"
+                             <?php endif; ?>
                              data-auto_select="false"
                              data-itp_support="true"
                              data-use_fedcm_for_prompt="false">
