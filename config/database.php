@@ -12,6 +12,7 @@ require_once __DIR__ . '/env.php';
 
 // Database configuration constants
 define('DB_HOST', env('DB_HOST', 'localhost'));
+define('DB_PORT', env_int('DB_PORT', 3306));
 define('DB_USERNAME', env('DB_USERNAME', 'root'));
 define('DB_PASSWORD', env('DB_PASSWORD', ''));
 define('DB_NAME', env('DB_NAME', 'vehicleregistrationsystem'));
@@ -39,7 +40,7 @@ function getDatabaseConnection() {
     
     if ($connection === null) {
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             $connection = new PDO($dsn, DB_USERNAME, DB_PASSWORD, DB_OPTIONS);
         } catch (PDOException $e) {
             // Log error and throw user-friendly exception
@@ -61,7 +62,7 @@ function getDatabaseConnection() {
  * @throws Exception If connection fails
  */
 function getLegacyDatabaseConnection() {
-    $connection = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME);
+    $connection = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME, DB_PORT);
     
     if ($connection->connect_error) {
         error_log("Legacy database connection failed: " . $connection->connect_error);

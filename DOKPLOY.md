@@ -9,6 +9,9 @@
 - Add all variables from `.env.dokploy.example`.
 - Required in production:
   - `BASE_URL`
+  - `APP_PORT` (keep `80` unless you intentionally change container listen port)
+  - `DB_HOST`
+  - `DB_PORT`
   - `DB_USERNAME`
   - `DB_PASSWORD`
   - `DB_NAME`

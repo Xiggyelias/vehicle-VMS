@@ -24,11 +24,12 @@ wait_for_database() {
   while [[ "${attempt}" -le "${max_attempts}" ]]; do
     if php -r '
       $host = getenv("DB_HOST") ?: "db";
+      $port = (int)(getenv("DB_PORT") ?: 3306);
       $user = getenv("DB_USERNAME") ?: "";
       $pass = getenv("DB_PASSWORD") ?: "";
       $name = getenv("DB_NAME") ?: "";
       mysqli_report(MYSQLI_REPORT_OFF);
-      $conn = @new mysqli($host, $user, $pass, $name);
+      $conn = @new mysqli($host, $user, $pass, $name, $port);
       if ($conn && !$conn->connect_errno) {
           $conn->close();
           exit(0);
