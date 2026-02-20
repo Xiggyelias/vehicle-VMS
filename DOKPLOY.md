@@ -24,7 +24,7 @@
 - Optional:
   - `RUN_MIGRATIONS_ON_START=true` (runs `php migrate.php` at container boot)
   - `WAIT_FOR_DB_ON_START=true` (recommended; blocks app start until DB is reachable)
-  - `DB_HOST_FALLBACKS=mysql,database` (optional host fallback list, comma-separated)
+  - `DB_HOST_FALLBACKS=db,mysql,database` (optional host fallback list, comma-separated)
   - `OCR_SPACE_API_KEY`
   - Google OAuth values:
     - `GOOGLE_UX_MODE=popup` (recommended; avoids redirect URI mismatch)

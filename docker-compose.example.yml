@@ -69,6 +69,11 @@ services:
       retries: 10
     expose:
       - "${DB_PORT:-3306}"
+    networks:
+      default:
+        aliases:
+          - mysql
+          - database
 
 volumes:
   db_data:
