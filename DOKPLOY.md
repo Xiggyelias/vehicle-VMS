@@ -10,15 +10,16 @@
 - Required in production:
   - `BASE_URL`
   - `APP_PORT` (keep `80` unless you intentionally change container listen port)
-  - `DB_HOST` (if using internal compose DB, keep `db`; if using external/managed DB, set the actual host)
+  - `DB_HOST` (if using internal compose DB, set `db`; do not use `localhost` inside Docker)
   - `DB_PORT`
+  - `DB_DATABASE` (preferred) or `DB_NAME` (legacy alias)
   - `DB_USERNAME`
   - `DB_PASSWORD`
-  - `DB_NAME`
   - `MYSQL_ROOT_PASSWORD`
   - SMTP credentials (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, etc.)
 - Production validation enforced at container startup:
   - `DB_USERNAME` must not be `root`
+  - `DB_HOST` must not be `localhost`/`127.0.0.1`/`::1`
   - `BASE_URL` must be HTTPS (`https://...`)
   - Example placeholders like `change_me` / `your-email@example.com` are rejected
 - Optional:

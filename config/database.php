@@ -11,11 +11,30 @@
 require_once __DIR__ . '/env.php';
 
 // Database configuration constants
-define('DB_HOST', env('DB_HOST', 'localhost'));
-define('DB_PORT', env_int('DB_PORT', 3306));
-define('DB_USERNAME', env('DB_USERNAME', 'root'));
-define('DB_PASSWORD', env('DB_PASSWORD', ''));
-define('DB_NAME', env('DB_NAME', 'vehicleregistrationsystem'));
+// Docker/Dokploy runtime note:
+// - Inside containers, "localhost" points to the PHP container itself, not MySQL.
+// - Default host therefore uses the MySQL service name "db".
+$resolvedDbHost = trim((string) env('DB_HOST', env('MYSQL_HOST', env('MYSQLHOST', 'db'))));
+if ($resolvedDbHost === '') {
+    $resolvedDbHost = 'db';
+}
+
+$isContainerRuntime = file_exists('/.dockerenv') || env_bool('RUNNING_IN_DOCKER', false);
+if ($isContainerRuntime && in_array(strtolower($resolvedDbHost), ['localhost', '127.0.0.1', '::1'], true)) {
+    $resolvedDbHost = 'db';
+}
+
+$resolvedDatabaseName = trim((string) env('DB_DATABASE', env('DB_NAME', env('MYSQL_DATABASE', 'vehicleregistrationsystem'))));
+if ($resolvedDatabaseName === '') {
+    $resolvedDatabaseName = 'vehicleregistrationsystem';
+}
+
+define('DB_HOST', $resolvedDbHost);
+define('DB_PORT', max(1, env_int('DB_PORT', env_int('MYSQL_PORT', env_int('MYSQLPORT', env_int('MYSQL_TCP_PORT', 3306))))));
+define('DB_USERNAME', env('DB_USERNAME', env('DB_USER', env('MYSQL_USER', env('MYSQLUSER', 'root')))));
+define('DB_PASSWORD', env('DB_PASSWORD', env('MYSQL_PASSWORD', env('MYSQLPASSWORD', ''))));
+define('DB_NAME', $resolvedDatabaseName);
+define('DB_DATABASE', DB_NAME); // Preferred alias used by many platforms/frameworks.
 define('DB_CHARSET', env('DB_CHARSET', 'utf8mb4'));
 define('DB_CONNECT_MAX_ATTEMPTS', max(1, env_int('DB_CONNECT_MAX_ATTEMPTS', 3)));
 define('DB_CONNECT_RETRY_MS', max(0, env_int('DB_CONNECT_RETRY_MS', 250)));
@@ -190,7 +209,7 @@ function getDatabaseConnection() {
                 . implode(', ', $attemptedTargets)
                 . ". Last error: " . $errorMessage
             );
-            throw new Exception("Database connection failed. Please verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, and DB_NAME.");
+            throw new Exception("Database connection failed. Please verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, and DB_DATABASE/DB_NAME.");
         }
     }
     
@@ -245,7 +264,7 @@ function getLegacyDatabaseConnection() {
         . implode(', ', $attemptedTargets)
         . ". Last error: " . $lastError
     );
-    throw new Exception("Database connection failed. Please verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, and DB_NAME.");
+    throw new Exception("Database connection failed. Please verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, and DB_DATABASE/DB_NAME.");
 }
 
 /**

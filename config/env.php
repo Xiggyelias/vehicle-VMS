@@ -2,13 +2,43 @@
 /**
  * Environment Configuration Loader
  * 
- * This file loads environment variables from .env file.
+ * This file loads environment variables from an env file.
  * Uses vlucas/phpdotenv if available, otherwise falls back to simple parser.
  */
 
-// Check if .env file exists
-$envFile = dirname(__DIR__) . '/.env';
-$envFileExists = file_exists($envFile);
+// Resolve which env file to load.
+// Priority:
+// 1) Explicit ENV_FILE path/name
+// 2) APP_ENV=production -> .env.dokploy, then .env
+// 3) Default -> .env, then .env.dokploy
+$baseDir = dirname(__DIR__);
+$explicitEnvFile = trim((string) (getenv('ENV_FILE') ?: ''));
+$runtimeAppEnv = strtolower(trim((string) (getenv('APP_ENV') ?: '')));
+$envCandidates = [];
+
+if ($explicitEnvFile !== '') {
+    $isAbsolutePath = preg_match('/^(?:[A-Za-z]:[\\\\\\/]|\/)/', $explicitEnvFile) === 1;
+    $envCandidates[] = $isAbsolutePath
+        ? $explicitEnvFile
+        : $baseDir . '/' . ltrim($explicitEnvFile, '/\\');
+}
+
+if ($runtimeAppEnv === 'production') {
+    $envCandidates[] = $baseDir . '/.env.dokploy';
+    $envCandidates[] = $baseDir . '/.env';
+} else {
+    $envCandidates[] = $baseDir . '/.env';
+    $envCandidates[] = $baseDir . '/.env.dokploy';
+}
+
+$envFile = null;
+foreach ($envCandidates as $candidate) {
+    if (is_string($candidate) && $candidate !== '' && file_exists($candidate)) {
+        $envFile = $candidate;
+        break;
+    }
+}
+$envFileExists = $envFile !== null;
 
 // Load Composer's autoloader if available
 $autoloadPath = dirname(__DIR__) . '/vendor/autoload.php';
@@ -20,7 +50,7 @@ if ($composerInstalled) {
     // Use Dotenv library if available
     if (class_exists('Dotenv\Dotenv') && $envFileExists) {
         try {
-            $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
+            $dotenv = Dotenv\Dotenv::createImmutable(dirname($envFile), basename($envFile));
             $dotenv->load();
         } catch (Exception $e) {
             // Fall back to simple parser
@@ -40,7 +70,7 @@ if ($composerInstalled) {
  * @param string $envFile Path to .env file
  */
 function loadEnvFileFallback($envFile) {
-    if (!file_exists($envFile)) {
+    if (!is_string($envFile) || $envFile === '' || !file_exists($envFile)) {
         return; // Silently fail, use defaults
     }
     
@@ -64,6 +94,14 @@ function loadEnvFileFallback($envFile) {
             
             // Set environment variables
             if (!empty($key)) {
+                $alreadyDefined = array_key_exists($key, $_ENV)
+                    || array_key_exists($key, $_SERVER)
+                    || getenv($key) !== false;
+
+                if ($alreadyDefined) {
+                    continue;
+                }
+
                 putenv("$key=$value");
                 $_ENV[$key] = $value;
                 $_SERVER[$key] = $value;

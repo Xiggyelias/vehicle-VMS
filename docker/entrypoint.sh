@@ -6,6 +6,10 @@ cd /var/www/html
 mkdir -p logs uploads uploads/secure
 chown -R www-data:www-data logs uploads
 
+# Normalize DB database variable names so either key works.
+export DB_DATABASE="${DB_DATABASE:-${DB_NAME:-}}"
+export DB_NAME="${DB_NAME:-${DB_DATABASE:-}}"
+
 is_placeholder_value() {
   local value="${1:-}"
   case "$value" in
@@ -27,7 +31,7 @@ wait_for_database() {
       $port = (int)(getenv("DB_PORT") ?: 3306);
       $user = getenv("DB_USERNAME") ?: "";
       $pass = getenv("DB_PASSWORD") ?: "";
-      $name = getenv("DB_NAME") ?: "";
+      $name = getenv("DB_DATABASE") ?: (getenv("DB_NAME") ?: "");
       mysqli_report(MYSQLI_REPORT_OFF);
       $conn = @new mysqli($host, $user, $pass, $name, $port);
       if ($conn && !$conn->connect_errno) {
@@ -76,6 +80,11 @@ if [[ "${APP_ENV:-production}" == "production" ]]; then
 
   if [[ "${DB_USERNAME}" == "root" ]]; then
     echo "[entrypoint] DB_USERNAME must be a non-root application user in production." >&2
+    exit 1
+  fi
+
+  if [[ "${DB_HOST}" == "localhost" || "${DB_HOST}" == "127.0.0.1" || "${DB_HOST}" == "::1" ]]; then
+    echo "[entrypoint] DB_HOST cannot be localhost in Docker. Use the MySQL service name (for this stack: db)." >&2
     exit 1
   fi
 

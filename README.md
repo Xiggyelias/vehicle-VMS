@@ -12,7 +12,7 @@ Production-focused PHP/MySQL system for vehicle registration, driver authorizati
 1. Copy env template:
    - `.env.dokploy.example` -> `.env`
 2. Set required values:
-   - `BASE_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `MYSQL_ROOT_PASSWORD`
+   - `BASE_URL`, `DB_HOST=db`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` (or `DB_NAME`), `MYSQL_ROOT_PASSWORD`
    - SMTP values (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`)
    - Use real values (example placeholders are rejected in production startup checks)
 3. Start stack:
