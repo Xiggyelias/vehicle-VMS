@@ -446,11 +446,15 @@ class SecurityMiddleware {
             $field = substr($field, 0, $bracketPos);
         }
 
-        if (!isset(VALIDATION_RULES[$field])) {
+        $rule = self::getRouteSpecificValidationRule($field);
+        if ($rule === null && isset(VALIDATION_RULES[$field])) {
+            $rule = VALIDATION_RULES[$field];
+        }
+
+        if ($rule === null) {
             return;
         }
 
-        $rule = VALIDATION_RULES[$field];
         $rule['required'] = false;
         $validation = self::validateInput([$field => $value], [$field => $rule]);
         if (!($validation['valid'] ?? false) && isset($validation['errors'][$field])) {
@@ -458,6 +462,37 @@ class SecurityMiddleware {
                 $errors[$path][] = $message;
             }
         }
+    }
+
+    /**
+     * Returns route-specific rules for fields whose meaning varies by form.
+     *
+     * @param string $field
+     * @return array|null
+     */
+    private static function getRouteSpecificValidationRule($field) {
+        $route = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $route = strtolower($route);
+
+        if (str_ends_with($route, '/update-owner-info.php')) {
+            if ($field === 'phone') {
+                return [
+                    'required' => false,
+                    'pattern' => '/^\+?[0-9][0-9\s().-]{5,19}$/',
+                    'max_length' => 20
+                ];
+            }
+
+            if ($field === 'idNumber') {
+                return [
+                    'required' => false,
+                    'pattern' => '/^[A-Za-z0-9][A-Za-z0-9\s\/.-]{1,29}$/',
+                    'max_length' => 30
+                ];
+            }
+        }
+
+        return null;
     }
 
     /**

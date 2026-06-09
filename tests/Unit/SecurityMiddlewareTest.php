@@ -59,5 +59,18 @@ final class SecurityMiddlewareTest extends TestCase
         $this->assertFalse($result['valid']);
         $this->assertNotEmpty($result['errors']);
     }
+
+    public function testOwnerUpdateAllowsStaffStyleIdAndLocalPhone(): void
+    {
+        $_SERVER['REQUEST_URI'] = '/update-owner-info.php';
+
+        $errors = [];
+        $method = new ReflectionMethod(SecurityMiddleware::class, 'validateFieldUsingRules');
+        $method->setAccessible(true);
+        $method->invokeArgs(null, ['idNumber', 'c103', &$errors]);
+        $method->invokeArgs(null, ['phone', '7780033', &$errors]);
+
+        $this->assertSame([], $errors);
+    }
 }
 

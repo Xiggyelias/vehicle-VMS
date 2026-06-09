@@ -32,6 +32,7 @@
   - Google OAuth values:
     - `GOOGLE_UX_MODE=popup` (recommended; avoids redirect URI mismatch)
     - `GOOGLE_CALLBACK_URL=https://vehicle.africau.co.zw/auth/google/callback` (used when `GOOGLE_UX_MODE=redirect`)
+    - For local testing on `http://127.0.0.1:8000`, add that exact origin in Google Cloud Console, then set `GOOGLE_ALLOW_LOCAL_ORIGIN=true` in your local ignored env file.
   - Legacy callback alias is also supported: `https://vehicle.africau.co.zw/google-callback.php`
   - `ALLOW_INSECURE_BASE_URL=true` (temporary non-HTTPS testing only)
 

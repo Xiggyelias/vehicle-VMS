@@ -49,6 +49,12 @@ if (isset($login_successful) && $login_successful) {
     header("Location: user-dashboard.php");
     exit();
 }
+
+$requestHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+$isLocalGoogleOrigin = preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/', $requestHost) === 1;
+$allowLocalGoogleOrigin = env_bool('GOOGLE_ALLOW_LOCAL_ORIGIN', false);
+$showGoogleLocalOriginWarning = $isLocalGoogleOrigin && !$allowLocalGoogleOrigin;
+$productionLoginUrl = rtrim((string)env('GOOGLE_PRODUCTION_LOGIN_URL', 'https://vehicle.africau.co.zw/login.php'), '/');
 ?>
 
 
@@ -322,32 +328,42 @@ if (isset($login_successful) && $login_successful) {
                     </div>
                 <?php endif; ?>
                 <div id="loginErrorBanner" class="alert alert-danger" style="display:none;"></div>
+                <?php if ($showGoogleLocalOriginWarning): ?>
+                    <div class="alert alert-warning">
+                        Google sign-in is blocked on this local address until <strong><?= htmlspecialchars('http://' . $requestHost) ?></strong> is added as an authorized JavaScript origin in Google Cloud.
+                        <div style="margin-top:.5rem;">
+                            <a href="<?= htmlspecialchars($productionLoginUrl) ?>" class="forgot-password">Open production sign-in</a>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
 
                 <div id="googleLoginForm" class="login-form-container active" role="tabpanel" aria-labelledby="tab-google">
                     <div style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
                         <!-- Google Sign-In Button -->
-                        <div id="g_id_onload"
-                             data-client_id="<?= htmlspecialchars(GOOGLE_CLIENT_ID) ?>"
-                             data-context="signin"
-                             data-ux_mode="<?= htmlspecialchars(GOOGLE_UX_MODE) ?>"
-                             <?php if (GOOGLE_UX_MODE === 'redirect'): ?>
-                             data-login_uri="<?= htmlspecialchars(GOOGLE_CALLBACK_URL) ?>"
-                             <?php else: ?>
-                             data-callback="handleGoogleCredential"
-                             <?php endif; ?>
-                             data-auto_select="false"
-                             data-itp_support="true"
-                             data-use_fedcm_for_prompt="false">
-                        </div>
-                        <div class="g_id_signin"
-                             data-type="standard"
-                             data-shape="rectangular"
-                             data-theme="outline"
-                             data-text="continue_with"
-                             data-size="large"
-                             data-logo_alignment="left">
-                        </div>
+                        <?php if (!$showGoogleLocalOriginWarning): ?>
+                            <div id="g_id_onload"
+                                 data-client_id="<?= htmlspecialchars(GOOGLE_CLIENT_ID) ?>"
+                                 data-context="signin"
+                                 data-ux_mode="<?= htmlspecialchars(GOOGLE_UX_MODE) ?>"
+                                 <?php if (GOOGLE_UX_MODE === 'redirect'): ?>
+                                 data-login_uri="<?= htmlspecialchars(GOOGLE_CALLBACK_URL) ?>"
+                                 <?php else: ?>
+                                 data-callback="handleGoogleCredential"
+                                 <?php endif; ?>
+                                 data-auto_select="false"
+                                 data-itp_support="true"
+                                 data-use_fedcm_for_prompt="false">
+                            </div>
+                            <div class="g_id_signin"
+                                 data-type="standard"
+                                 data-shape="rectangular"
+                                 data-theme="outline"
+                                 data-text="continue_with"
+                                 data-size="large"
+                                 data-logo_alignment="left">
+                            </div>
+                        <?php endif; ?>
                         
                     </div>
                 </div>
@@ -676,6 +692,8 @@ if (isset($login_successful) && $login_successful) {
             });
         }
     </script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <?php if (!$showGoogleLocalOriginWarning): ?>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <?php endif; ?>
 </body>
 </html> 

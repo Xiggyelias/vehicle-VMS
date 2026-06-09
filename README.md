@@ -31,6 +31,7 @@ Production-focused PHP/MySQL system for vehicle registration, driver authorizati
 ## Production Notes
 - Apache hardening config is applied from `docker/apache-prod.conf`
 - Entry point checks required production env vars (`docker/entrypoint.sh`)
+- Local Google sign-in requires the local browser origin to be registered in Google Cloud; otherwise use the production sign-in URL.
 - Optional auto-migrations at startup:
   - `RUN_MIGRATIONS_ON_START=true`
 - Health check validates:

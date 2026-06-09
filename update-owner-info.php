@@ -118,6 +118,16 @@ if (empty($fullName)) {
     sendResponse('error', 'Full name is required', [], 422);
 }
 
+if ($idNumber !== '' && !preg_match('/^[A-Za-z0-9][A-Za-z0-9\s\/.-]{1,29}$/', $idNumber)) {
+    error_log('Validation failed: ID/passport format is invalid');
+    sendResponse('error', 'ID/passport may contain letters, numbers, spaces, slash, dot, or hyphen only.', [], 422);
+}
+
+if ($phone !== '' && !preg_match('/^\+?[0-9][0-9\s().-]{5,19}$/', $phone)) {
+    error_log('Validation failed: Phone number format is invalid');
+    sendResponse('error', 'Phone number may contain digits, spaces, brackets, hyphen, dot, and an optional leading +.', [], 422);
+}
+
 try {
     $conn = getLegacyDatabaseConnection();
     if (!$conn) {

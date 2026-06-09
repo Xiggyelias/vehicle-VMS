@@ -1784,7 +1784,10 @@ $csrfToken = SecurityMiddleware::generateCSRFToken();
                 }
 
                 if (!response.ok) {
-                    const error = new Error(responseData.message || 'Failed to update information');
+                    const details = responseData.errors && typeof responseData.errors === 'object'
+                        ? Object.values(responseData.errors).flat().join(' ')
+                        : '';
+                    const error = new Error(details || responseData.message || 'Failed to update information');
                     error.response = responseData;
                     throw error;
                 }
