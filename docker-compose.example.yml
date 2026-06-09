@@ -10,16 +10,16 @@ services:
     environment:
       APP_ENV: production
       BASE_URL: ${BASE_URL}
-      DB_HOST: ${DB_HOST:-db}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_USERNAME: ${DB_USERNAME:-vehiclereg_user}
-      DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD must be set}"
-      DB_DATABASE: ${DB_DATABASE:-${DB_NAME:-vehicleregistrationsystem}}
-      DB_NAME: ${DB_DATABASE:-${DB_NAME:-vehicleregistrationsystem}}
+      DB_HOST: ${DB_HOST:-${APP_DB_HOST:-db}}
+      DB_PORT: ${DB_PORT:-${APP_DB_PORT:-3306}}
+      DB_USERNAME: ${DB_USERNAME:-${APP_DB_USERNAME:-vehiclereg_user}}
+      DB_PASSWORD: "${DB_PASSWORD:-${APP_DB_PASSWORD:?DB_PASSWORD or APP_DB_PASSWORD must be set}}"
+      DB_DATABASE: ${DB_DATABASE:-${DB_NAME:-${APP_DB_DATABASE:-vehicleregistrationsystem}}}
+      DB_NAME: ${DB_DATABASE:-${DB_NAME:-${APP_DB_DATABASE:-vehicleregistrationsystem}}}
       DB_CHARSET: ${DB_CHARSET:-utf8mb4}
       DB_CONNECT_MAX_ATTEMPTS: ${DB_CONNECT_MAX_ATTEMPTS:-3}
       DB_CONNECT_RETRY_MS: ${DB_CONNECT_RETRY_MS:-250}
-      DB_HOST_FALLBACKS: ${DB_HOST_FALLBACKS:-}
+      DB_HOST_FALLBACKS: ${DB_HOST_FALLBACKS:-${APP_DB_HOST_FALLBACKS:-}}
       SESSION_SECURE: "true"
       SESSION_HTTP_ONLY: "true"
       DISPLAY_ERRORS: "false"
@@ -35,6 +35,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Vehicle Registration System}
+      SMTP_REQUIRED: ${SMTP_REQUIRED:-false}
       OCR_SPACE_API_KEY: ${OCR_SPACE_API_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-}
@@ -60,11 +61,11 @@ services:
     restart: unless-stopped
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --port=${DB_PORT:-3306}
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-${DB_NAME:-vehicleregistrationsystem}}
-      MYSQL_USER: ${DB_USERNAME:-vehiclereg_user}
-      MYSQL_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD must be set}"
-      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}"
-      MYSQL_TCP_PORT: ${DB_PORT:-3306}
+      MYSQL_DATABASE: ${DB_DATABASE:-${DB_NAME:-${APP_DB_DATABASE:-vehicleregistrationsystem}}}
+      MYSQL_USER: ${DB_USERNAME:-${APP_DB_USERNAME:-vehiclereg_user}}
+      MYSQL_PASSWORD: "${DB_PASSWORD:-${APP_DB_PASSWORD:?DB_PASSWORD or APP_DB_PASSWORD must be set}}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-${APP_DB_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD or APP_DB_ROOT_PASSWORD must be set}}"
+      MYSQL_TCP_PORT: ${DB_PORT:-${APP_DB_PORT:-3306}}
     security_opt:
       - no-new-privileges:true
     volumes:

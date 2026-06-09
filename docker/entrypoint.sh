@@ -20,6 +20,17 @@ is_placeholder_value() {
   return 1
 }
 
+is_truthy() {
+  local value
+  value="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    1|true|yes|on)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 wait_for_database() {
   local max_attempts="${DB_WAIT_MAX_ATTEMPTS:-30}"
   local sleep_seconds="${DB_WAIT_SLEEP_SECONDS:-2}"
@@ -58,10 +69,6 @@ if [[ "${APP_ENV:-production}" == "production" ]]; then
     DB_USERNAME
     DB_PASSWORD
     DB_NAME
-    SMTP_HOST
-    SMTP_USERNAME
-    SMTP_PASSWORD
-    SMTP_FROM_EMAIL
   )
 
   for required in "${required_vars[@]}"; do
@@ -77,6 +84,36 @@ if [[ "${APP_ENV:-production}" == "production" ]]; then
       exit 1
     fi
   done
+
+  smtp_vars=(
+    SMTP_HOST
+    SMTP_USERNAME
+    SMTP_PASSWORD
+    SMTP_FROM_EMAIL
+  )
+
+  if is_truthy "${SMTP_REQUIRED:-false}"; then
+    for required in "${smtp_vars[@]}"; do
+      current_value="${!required:-}"
+
+      if [[ -z "${current_value}" ]]; then
+        echo "[entrypoint] Missing required SMTP environment variable: ${required}" >&2
+        exit 1
+      fi
+
+      if is_placeholder_value "${current_value}"; then
+        echo "[entrypoint] SMTP environment variable '${required}' still uses an example value. Set a real value or set SMTP_REQUIRED=false." >&2
+        exit 1
+      fi
+    done
+  else
+    for optional in "${smtp_vars[@]}"; do
+      current_value="${!optional:-}"
+      if [[ -n "${current_value}" ]] && is_placeholder_value "${current_value}"; then
+        echo "[entrypoint] Warning: SMTP variable '${optional}' uses an example value. Email features may not work until SMTP is configured." >&2
+      fi
+    done
+  fi
 
   if [[ "${DB_USERNAME}" == "root" ]]; then
     echo "[entrypoint] DB_USERNAME must be a non-root application user in production." >&2

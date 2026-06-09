@@ -11,13 +11,9 @@ RUN composer install \
     --no-progress \
     --prefer-dist
 
-FROM php:8.2-apache
+FROM php:8.2-apache-bookworm
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    && docker-php-ext-install pdo_mysql mysqli \
-    && rm -rf /var/lib/apt/lists/*
+RUN docker-php-ext-install pdo_mysql mysqli
 
 RUN a2enmod rewrite headers expires
 

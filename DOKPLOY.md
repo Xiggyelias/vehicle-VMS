@@ -16,13 +16,15 @@
   - `DB_USERNAME`
   - `DB_PASSWORD`
   - `MYSQL_ROOT_PASSWORD`
-  - SMTP credentials (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, etc.)
+  - You may use `APP_DB_*` aliases instead of `DB_*`/`MYSQL_ROOT_PASSWORD` when your Dokploy environment is scoped that way.
 - Production validation enforced at container startup:
   - `DB_USERNAME` must not be `root`
   - `DB_HOST` must not be `localhost`/`127.0.0.1`/`::1`
   - `BASE_URL` must be HTTPS (`https://...`)
-  - Example placeholders like `change_me` / `your-email@example.com` are rejected
+  - Example placeholders for required app/DB values are rejected
 - Optional:
+  - SMTP credentials (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, etc.)
+  - `SMTP_REQUIRED=true` (recommended once SMTP is configured; rejects missing/example SMTP values at startup. With the default `false`, SMTP placeholders only log warnings so the app does not restart-loop.)
   - `RUN_MIGRATIONS_ON_START=true` (runs `php migrate.php` at container boot)
   - `WAIT_FOR_DB_ON_START=true` (recommended; blocks app start until DB is reachable)
   - `DB_HOST_FALLBACKS=db,mysql,database` (optional host fallback list, comma-separated)

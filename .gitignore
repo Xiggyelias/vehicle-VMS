@@ -3,6 +3,7 @@
 .env.dokploy
 .env.local
 .env.*.local
+docker-compose.override.yml
 
 # Composer
 /vendor/
@@ -10,6 +11,10 @@
 # Logs
 /logs/*.log
 *.log
+*.err
+build-*.log
+build-*.err
+php-server.*
 
 # Uploads
 /uploads/*

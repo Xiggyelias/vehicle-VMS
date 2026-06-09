@@ -118,7 +118,12 @@ function loadEnvFileFallback($envFile) {
  * @return mixed Environment variable value or default
  */
 function env($key, $default = null) {
-    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+    // Real process/container environment should win over values loaded from
+    // local .env files, especially on Dokploy and other managed platforms.
+    $value = getenv($key);
+    if ($value === false) {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? false;
+    }
     
     if ($value === false) {
         return $default;

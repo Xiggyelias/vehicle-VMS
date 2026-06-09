@@ -19,17 +19,17 @@ define('SECURITY_HEADERS', [
 
 // Session Security Configuration
 define('SESSION_SECURITY', [
-    'name' => 'vehicle_registration_session',
-    'lifetime' => 3600, // 1 hour
-    'path' => '/',
-    'domain' => '',
-    'secure' => true, // Set to true in production
-    'httponly' => true,
-    'samesite' => 'Strict',
-    'regenerate_id' => true,
-    'gc_maxlifetime' => 3600,
-    'gc_probability' => 1,
-    'gc_divisor' => 100
+    'name' => env('SESSION_NAME', 'vehicle_registration_session'),
+    'lifetime' => env_int('SESSION_LIFETIME', 3600), // 1 hour
+    'path' => env('SESSION_PATH', '/'),
+    'domain' => env('SESSION_DOMAIN', ''),
+    'secure' => env_bool('SESSION_SECURE', true),
+    'httponly' => env_bool('SESSION_HTTP_ONLY', true),
+    'samesite' => env('SESSION_SAMESITE', 'Strict'),
+    'regenerate_id' => env_bool('SESSION_REGENERATE_ID', true),
+    'gc_maxlifetime' => env_int('SESSION_GC_MAXLIFETIME', 3600),
+    'gc_probability' => env_int('SESSION_GC_PROBABILITY', 1),
+    'gc_divisor' => env_int('SESSION_GC_DIVISOR', 100)
 ]);
 
 // Password Security Configuration
